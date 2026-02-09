@@ -1,0 +1,4 @@
+interface:
+  display_name: "PaperBanana Agentic Illustration"
+  short_description: "Guide multi-agent academic illustration workflows"
+  default_prompt: "Use $paperbanana-agentic-illustration to run a PaperBanana-style Retriever-Planner-Stylist-Visualizer-Critic workflow for an academic figure request."
