@@ -348,27 +348,3 @@ paperbanana-agentic-illustration/
 
 ---
 
-## 11) 公开仓库与发布
-
-默认远程仓库：
-- `paperbanana-agentic-illustration-skill`
-
-常用命令：
-
-```bash
-git remote -v
-gh repo view --web
-```
-
-如果你需要重新发布：
-
-```bash
-gh repo edit --visibility public
-```
-
----
-
-如果你希望，我下一步可以继续补：
-- `examples/`（可复制运行的完整样例）
-- `CHANGELOG.md`（版本演进日志）
-- `CONTRIBUTING.md`（团队协作贡献规范）
