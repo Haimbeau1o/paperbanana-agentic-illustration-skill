@@ -51,6 +51,12 @@
 
 ## 2) 一图看懂工作流
 
+![PaperBanana 五代理工作流信息图](assets/workflow-infographic.png)
+
+> 上图展示了完整的五代理协作流程：从 Retriever 检索参考 → Planner 规划描述 → Stylist 风格优化 → Visualizer 生成产物 → Critic 迭代审查。支持 `diagram_image` 和 `plot_code` 两种输出模式。
+
+---
+
 ### 2.1 端到端流程图
 
 ```mermaid
