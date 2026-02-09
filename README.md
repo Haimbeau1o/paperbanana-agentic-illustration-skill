@@ -4,10 +4,15 @@
 
 本技能的目标很明确：**让用户更方便、更稳定地把“论文方法描述 + 图注”转成高质量学术图示**，并且通过可审计的多代理流程提高可控性。
 
+参考来源（理论基线）：
+- PaperBanana 项目页：<https://dwzhu-pku.github.io/PaperBanana/>
+- PaperBanana 论文（arXiv）：<https://arxiv.org/abs/2601.23265>
+
 ---
 
 ## 目录
 
+- [0. 五分钟快速上手](#0-五分钟快速上手)
 - [1. 项目定位](#1-项目定位)
 - [2. 与 PaperBanana 的关系与当前边界](#2-与-paperbanana-的关系与当前边界)
 - [3. 你能用它做什么](#3-你能用它做什么)
@@ -20,6 +25,33 @@
 - [10. 迭代路线图（重点）](#10-迭代路线图重点)
 - [11. 开源后升级实施清单](#11-开源后升级实施清单)
 - [12. 发布新仓库建议流程](#12-发布新仓库建议流程)
+
+---
+
+## 0. 五分钟快速上手
+
+如果你想先确认“能不能跑通”，直接按下面做：
+
+1. 在当前目录创建 `runs/demo-001/`，并准备 `01_input.json`。
+2. 按 `Retriever -> Planner -> Stylist -> Visualizer -> Critic` 顺序执行一次。
+3. 保存轮次日志为 `05_round_log.json`。
+4. 执行以下三个命令校验与产出评分卡：
+
+```bash
+python3 scripts/validate_agent_io.py \
+  --role retriever \
+  --input runs/demo-001/01_input.json \
+  --output runs/demo-001/02_retriever_output.json
+
+python3 scripts/validate_round_loop.py \
+  --log runs/demo-001/05_round_log.json
+
+python3 scripts/build_scorecard_template.py \
+  --output-dir runs/demo-001 \
+  --case-id demo-001
+```
+
+5. 打开 `demo-001-scorecard.md` 完成四维人工审查并归档。
 
 ---
 
@@ -404,31 +436,39 @@ A: 不影响主流程；`SKILL.md` 是行为规范核心。
 
 ## 12. 发布新仓库建议流程
 
-当你准备把当前 skill 独立发布为新仓库时，建议流程：
+当前目录已经是独立 Git 仓库，可以直接创建远程并推送。
+
+推荐默认：
+- 仓库名：`paperbanana-agentic-illustration-skill`
+- 可见性：`private`（后续可切公开）
 
 ```bash
-# 1) 在 skill 目录初始化仓库
+# 1) 进入仓库目录
 cd paperbanana-agentic-illustration
-git init
 
-# 2) 首次提交
-git add .
-git commit -m "feat: initial PaperBanana agentic illustration skill v0.1"
+# 2) 检查本地状态
+git status
 
-# 3) 创建远程仓库并推送（示例：GitHub CLI）
-# 将 <repo-name> 改成你的仓库名
-# --public 可改成 --private
-gh repo create <repo-name> --public --source=. --remote=origin --push
+# 3) GitHub CLI 登录（若尚未登录或 token 失效）
+gh auth login
+
+# 4) 创建远程仓库并推送
+gh repo create paperbanana-agentic-illustration-skill \
+  --private \
+  --source=. \
+  --remote=origin \
+  --push
+
+# 5) 验证远程
+git remote -v
+gh repo view --web
 ```
+
+如果你要公开发布，把 `--private` 改成 `--public` 即可。
 
 发布前建议自检：
 - [ ] README 与 SKILL.md 一致
 - [ ] 所有脚本可运行
 - [ ] demo 场景可复现
 - [ ] 迭代路线清晰可执行
-
----
-
-如果你愿意，下一步我可以直接帮你：
-1. 把这个 skill 目录变成独立仓库结构（含 `.gitignore`、`LICENSE`、`CHANGELOG.md`、`CONTRIBUTING.md`）。
-2. 按你选定的仓库名和可见性，执行 `gh repo create` 并推送首个版本。
+- [ ] `references/install-and-compat.md` 与实际安装路径一致
