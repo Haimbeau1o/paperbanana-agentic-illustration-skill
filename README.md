@@ -1,10 +1,17 @@
 # PaperBanana Agentic Illustration Skill
 
-> 一个面向“用户做图效率”的多代理技能：把论文方法描述和图注，稳定转换成可迭代、可评分、可交付的学术图示流程。
+> 让用户更容易做学术图：把“方法描述 + 图注”转成可迭代、可审查、可交付的图示流程。
 
-本项目基于 PaperBanana 的公开论文思路做工程化封装，目标不是替代你的模型，而是提供一套**用户友好、流程清晰、结果可追溯**的做图工作流。
+这个仓库不是图像模型本体，而是一套**用户友好的做图工作流技能**。  
+我们基于 PaperBanana 公开论文思想，做了工程化落地，让你可以稳定跑通：
 
-理论基线：
+- 参考检索（Retriever）
+- 内容规划（Planner）
+- 风格润色（Stylist）
+- 图像/代码可视化（Visualizer）
+- 迭代批改（Critic）
+
+理论来源：
 - [PaperBanana 项目页](https://dwzhu-pku.github.io/PaperBanana/)
 - [PaperBanana 论文（arXiv:2601.23265）](https://arxiv.org/abs/2601.23265)
 
@@ -12,72 +19,94 @@
 
 ## 目录
 
-- [1. 这个技能能帮你什么](#1-这个技能能帮你什么)
-- [2. 适合谁使用](#2-适合谁使用)
-- [3. 两分钟快速开始](#3-两分钟快速开始)
-- [4. 完整用户操作指南](#4-完整用户操作指南)
-- [5. 两种模式怎么选](#5-两种模式怎么选)
-- [6. 输出与交付建议](#6-输出与交付建议)
-- [7. 质量检查和验收标准](#7-质量检查和验收标准)
-- [8. 常见问题（FAQ）](#8-常见问题faq)
-- [9. 后续改进专区（重点）](#9-后续改进专区重点)
-- [10. 当前边界与透明说明](#10-当前边界与透明说明)
-- [11. 目录结构](#11-目录结构)
-- [12. 发布仓库与推送](#12-发布仓库与推送)
+- [1) 你会得到什么](#1-你会得到什么)
+- [2) 一图看懂工作流](#2-一图看懂工作流)
+- [3) 三分钟快速上手](#3-三分钟快速上手)
+- [4) 完整用户操作手册](#4-完整用户操作手册)
+- [5) 输入输出模板](#5-输入输出模板)
+- [6) 验收标准](#6-验收标准)
+- [7) 常见问题](#7-常见问题)
+- [8) 后续改进专区（重点）](#8-后续改进专区重点)
+- [9) 当前边界与透明说明](#9-当前边界与透明说明)
+- [10) 仓库结构](#10-仓库结构)
+- [11) 公开仓库与发布](#11-公开仓库与发布)
 
 ---
 
-## 1. 这个技能能帮你什么
+## 1) 你会得到什么
 
-你可以把它理解为“做图流程总控器”：
+这个技能帮你把“做图”从一次性 prompt 变成**可复用流程**：
 
-- 把输入（方法段落 + 图注 + 参考候选）规范化
-- 用 5 个代理角色分工协作（Retriever / Planner / Stylist / Visualizer / Critic）
-- 用固定 JSON 契约保证每一步可检查、可复盘
-- 用迭代回路（默认 T=3）持续提升图示质量
-- 自动生成评分模板（Faithfulness / Conciseness / Readability / Aesthetics）
+- 更稳定：每一步都有 JSON 契约，不靠“感觉”
+- 更可控：默认 T=3 轮迭代，可提前终止
+- 更可审查：有 round log、有评分卡、有交付清单
+- 更易协作：同一个 case 能被多人复盘
 
-一句话：**更少猜模型，多靠流程稳定出图。**
-
----
-
-## 2. 适合谁使用
-
-- 研究者：想快速把方法描述变成图，不想每次重写长 prompt
-- 工程师：想把做图流程嵌入 Agent 系统，有标准输入输出可接
-- 团队负责人：想要“可追溯、可审核、可迭代”的图示交付流程
-
-如果你关心“能不能复现这张图为什么这么画出来”，这个技能会很合适。
+适用对象：
+- 研究者：快速把方法段落变成图
+- 工程师：把做图流程接入 Agent 系统
+- 团队负责人：要求“可追溯、可验收”的交付
 
 ---
 
-## 3. 两分钟快速开始
+## 2) 一图看懂工作流
 
-### Step 1: 进入 skill 目录
+### 2.1 端到端流程图
 
-```bash
-cd paperbanana-agentic-illustration
+```mermaid
+flowchart LR
+    A[用户输入<br/>source_context + caption + candidate_pool] --> B[Retriever<br/>选Top参考]
+    B --> C[Planner<br/>生成初稿描述]
+    C --> D[Stylist<br/>风格优化]
+    D --> E[Visualizer<br/>出图或出代码]
+    E --> F[Critic<br/>对齐事实与可读性]
+    F --> G{stop_flag=true?}
+    G -- 否 --> E
+    G -- 是 --> H[输出最终结果 + round log + scorecard]
 ```
 
-### Step 2: 准备一个 demo 输入
+### 2.2 模式选择图
 
-可直接参考 `references/demo-scenario.md`，保存到：
-
-```text
-runs/demo-001/01_input.json
+```mermaid
+flowchart TD
+    Q[你主要关心什么?] --> N{数值精度是否是第一优先级?}
+    N -- 是 --> P[plot_code 模式<br/>生成可执行绘图代码]
+    N -- 否 --> I[diagram_image 模式<br/>生成方法框架图/概念图]
 ```
 
-### Step 3: 依次执行 5-agent 流程
+### 2.3 迭代回路图（默认 T=3）
 
-按顺序执行：
+```mermaid
+flowchart LR
+    D0[description_0] --> V1[Visualizer round 1]
+    V1 --> C1[Critic round 1]
+    C1 --> D1[revised_description_1]
+    D1 --> V2[Visualizer round 2]
+    V2 --> C2[Critic round 2]
+    C2 --> D2[revised_description_2]
+    D2 --> V3[Visualizer round 3]
+    V3 --> C3[Critic round 3]
+    C3 --> End[结束或提前终止]
+```
+
+---
+
+## 3) 三分钟快速上手
+
+### Step 1: 准备 demo 输入
+
+在仓库根目录创建：`runs/demo-001/01_input.json`。  
+可直接参考 `references/demo-scenario.md` 的示例。
+
+### Step 2: 按顺序执行 5-agent
 
 ```text
 Retriever -> Planner -> Stylist -> Visualizer -> Critic
 ```
 
-把各阶段结果保存到 `runs/demo-001/`。
+把每一步输出保存到 `runs/demo-001/`。
 
-### Step 4: 运行校验和评分卡生成
+### Step 3: 跑校验脚本 + 评分卡
 
 ```bash
 python3 scripts/validate_agent_io.py \
@@ -93,220 +122,210 @@ python3 scripts/build_scorecard_template.py \
   --case-id demo-001
 ```
 
-完成后，你会得到可填写的评分卡文件，用于交付前审核。
+成功后会得到：
+- `demo-001-scorecard.json`
+- `demo-001-scorecard.md`
 
 ---
 
-## 4. 完整用户操作指南
+## 4) 完整用户操作手册
 
-下面是推荐的完整操作路径，适合实际项目。
+### 4.1 准备输入（最低要求）
 
-### 4.1 准备输入（必须）
-
-最小输入字段：
 - `source_context`
 - `communicative_intent`
 - `caption`
 - `candidate_pool[]`
 
 建议：
-- `source_context` 使用你的原始方法段落，不要过度压缩
-- `communicative_intent` 一句话说清“图要表达什么”
-- `candidate_pool` 推荐 >= 5 条，检索更稳定
+- `source_context` 保留关键术语，避免过度改写
+- `candidate_pool` 推荐 >= 5 条，检索更稳
+- `communicative_intent` 用一句话明确“图要讲什么”
 
-### 4.2 执行 Retriever
+### 4.2 Retriever
 
-目标：选出最有帮助的参考样例（Top-K，K<=10）
+目标：选最有帮助的参考样例（1~10 条）
 
-输出关键字段：
+产出：
 - `top_refs[]`
 - `selection_rationale`
 - `retrieval_confidence`
 
-### 4.3 执行 Planner
+### 4.3 Planner
 
-目标：把方法信息翻译成完整图示说明
+目标：把方法内容转为结构化图示说明
 
-输出关键字段：
+产出：
 - `initial_description`
 - `assumption_block`（有歧义时）
 
-### 4.4 执行 Stylist
+### 4.4 Stylist
 
-目标：只优化视觉表达，不改语义事实
+目标：优化视觉表达，不改语义事实
 
-输出关键字段：
+产出：
 - `optimized_description`
 - `style_actions[]`
 
-### 4.5 执行 Visualizer
+### 4.5 Visualizer
 
-目标：根据模式产出图像或绘图代码
+根据模式出产物：
+- `diagram_image` -> 图像路径/图像提示
+- `plot_code` -> 可执行绘图代码
 
-输出关键字段：
-- `artifact.type` (`image_path` / `image_prompt` / `code_text`)
+产出：
+- `artifact.type`
 - `artifact.value`
 
-### 4.6 执行 Critic + 迭代回路
+### 4.6 Critic + 回路
 
-默认轮次：`T=3`
+目标：纠错并推动收敛。
 
-每轮流程：
-1. Visualizer 产出 `artifact_t`
-2. Critic 产出 `critic_suggestions` 和 `revised_description`
-3. 下一轮使用 `description_{t+1} = revised_description`
+每轮 Critic 产出：
+- `critic_suggestions`
+- `revised_description`
+- `stop_flag`
 
-可以提前结束，但要满足：
+提前终止必须同时满足：
 - `stop_flag=true`
-- 日志写明 `terminated_early=true`
-- 给出 `termination_reason`
+- round log 写 `terminated_early=true`
+- round log 写明 `termination_reason`
 
-### 4.7 生成评分卡并交付
+### 4.7 交付建议
 
-生成后填写四维质量评估：
-- Faithfulness（事实一致）
-- Conciseness（信息精炼）
-- Readability（可读性）
-- Aesthetics（审美）
-
-建议和以下文件一起交付：
-- `01_input.json`
-- `05_round_log.json`
-- `*-scorecard.json`
-- `*-scorecard.md`
-- 最终图像或代码产物
+建议最终打包这些文件：
+- 输入：`01_input.json`
+- 回路：`05_round_log.json`
+- 评分：`*-scorecard.json`, `*-scorecard.md`
+- 产物：最终图片或代码
 
 ---
 
-## 5. 两种模式怎么选
+## 5) 输入输出模板
 
-| 模式 | 适用场景 | 优先目标 |
-| --- | --- | --- |
-| `diagram_image` | 方法框架图、系统流程图、概念图 | 视觉表达和结构清晰 |
-| `plot_code` | 统计图、对数值精度要求高的图 | 数值一致性和可复现 |
+完整契约见：`references/agent-contracts.md`。
 
-简单判断：
-- 你更在意“图示表达” -> `diagram_image`
-- 你更在意“数值准确” -> `plot_code`
+快速示意：
 
----
-
-## 6. 输出与交付建议
-
-建议你按 case 建目录归档：
-
-```text
-runs/<case-id>/
-├── 01_input.json
-├── 02_retriever_output.json
-├── 03_planner_output.json
-├── 04_stylist_output.json
-├── 05_round_log.json
-├── <case-id>-scorecard.json
-└── <case-id>-scorecard.md
+```json
+{
+  "source_context": "...",
+  "communicative_intent": "...",
+  "caption": "...",
+  "candidate_pool": [{"id": "ref_001", "summary": "..."}]
+}
 ```
 
-这样做的好处：
-- 可复盘（知道每一步怎么来的）
-- 可评审（团队可以看关键决策链）
-- 可迭代（下次从同类 case 快速迁移）
+建议保持：
+- 字段名不改
+- 类型不改
+- 必填字段不省略
 
 ---
 
-## 7. 质量检查和验收标准
+## 6) 验收标准
 
-最低验收（建议作为 v0.1 合格线）：
+### 基础验收（v0.1）
 
 - [ ] `SKILL.md` 校验通过
 - [ ] `agents/openai.yaml` 可解析
 - [ ] `validate_agent_io.py` 通过
 - [ ] `validate_round_loop.py` 通过
-- [ ] 评分卡模板可生成并可填写
+- [ ] 评分卡模板可生成
 
-进阶验收（建议团队实践）：
+### 建议增强验收
 
-- [ ] 至少 1 个完整 demo 跑通
-- [ ] 至少 1 个提前终止 case 跑通
-- [ ] 至少 1 个失败回滚 case 有记录
+- [ ] 至少 1 个完整 demo case 跑通
+- [ ] 至少 1 个提前终止 case
+- [ ] 至少 1 个失败回滚记录
 
 ---
 
-## 8. 常见问题（FAQ）
+## 7) 常见问题
 
-### Q1. 为什么一定要走 Critic？
-因为“看起来好看”不等于“事实正确”。Critic 是防止事实偏移的关键环节。
+### Q1: 为什么必须有 Critic？
+因为“看起来好”不等于“事实对”。Critic 是事实对齐保险丝。
 
-### Q2. 为什么强调 JSON 契约？
-因为可验证、可自动检查、可重复运行。自由文本不利于工程协作。
+### Q2: 为什么强调 JSON，而不是自由文本？
+因为 JSON 才能自动验证、可复盘、可协作。
 
-### Q3. 出图不稳定怎么办？
-建议按优先级优化：
+### Q3: 如果图像生成不稳定怎么办？
+优先按顺序优化：
 1. Planner 描述更细
-2. Stylist 约束更严格
-3. Critic 提示更可执行
-4. 必要时切换 `plot_code`
+2. Stylist 约束更强
+3. Critic 给出更可执行建议
+4. 切换到 `plot_code`
 
-### Q4. 某些平台不识别 `agents/openai.yaml` 怎么办？
-不影响主流程。`SKILL.md` 才是行为规范核心。
-
----
-
-## 9. 后续改进专区（重点）
-
-这是给用户看的“未来承诺区”，告诉你我们会如何持续改进。
-
-### 9.1 为什么需要迭代
-
-目前 PaperBanana 官方代码尚未完整开源。我们现在做的是：
-- 先把可用工作流做稳
-- 再随着官方实现公开，逐步对齐字段、提示词和回路细节
-
-### 9.2 已完成（当前版本）
-
-- 5-agent 协作协议
-- 双模式路由（diagram_image / plot_code）
-- 迭代回路校验脚本
-- 四维评分模板
-- 用户向 README（本文件）
-
-### 9.3 下一阶段（官方代码开放后）
-
-**计划升级点：**
-1. 对齐官方 agent I/O schema
-2. 对齐官方提示词结构
-3. 增加官方 profile 的脚本校验
-4. 补充更多真实案例模板
-
-### 9.4 对用户的承诺
-
-我们会保持这三点：
-- **兼容优先**：尽量不破坏你已有 case 结构
-- **文档同步**：每次升级都更新 README 和 references
-- **可迁移**：保留 provider-agnostic 的角色映射，避免锁死单一模型
-
-### 9.5 你可以如何参与改进
-
-如果你是用户/团队维护者，欢迎提供：
-- 失败 case（最好含 round log）
-- 想要新增的场景模板
-- 你们希望接入的模型配置
-
-这些反馈会直接影响下一版优先级。
+### Q4: 如果宿主不识别 `openai.yaml`？
+不影响主流程。`SKILL.md` 是核心行为规范。
 
 ---
 
-## 10. 当前边界与透明说明
+## 8) 后续改进专区（重点）
 
-为了避免误解，这里明确说明当前不覆盖内容：
-- 不内置具体图像 API 的调用代码
-- 不包含私有模型凭据管理
-- 不宣称与未开源官方代码“完全一致”
+> 这是给用户看的“升级承诺区”。你能清楚知道下一版会怎么变好。
 
-当前定位是：**稳定可用的技能工作流层**。
+### 8.1 为什么现在就可用
+
+虽然 PaperBanana 官方代码尚未完整开源，但我们已经把最关键的工程要素固化：
+- 角色分工
+- 数据契约
+- 迭代回路
+- 质量评分
+
+这保证你今天就能用，且不是一次性 prompt hack。
+
+### 8.2 未来升级路线（用户视角）
+
+```mermaid
+timeline
+    title Skill 演进路线
+    v0.1 : 工作流可用
+         : 5-agent协议
+         : 校验脚本
+         : 评分模板
+    v0.2 : 对齐官方代码字段
+         : 对齐官方提示词
+         : 增加官方schema profile
+    v0.3 : 可配置执行器增强
+         : provider映射加强
+         : 成本与日志统计
+    v1.0 : 稳定版发布
+         : 20+真实案例回归
+         : 文档与示例闭环
+```
+
+### 8.3 我们会优先改进什么
+
+1. 与官方实现一致性
+2. 真实案例模板数量
+3. 更友好的错误提示
+4. 更轻量的上手体验
+
+### 8.4 你可以如何参与
+
+欢迎反馈：
+- 失败 case（最好附 `05_round_log.json`）
+- 你希望新增的图示模板
+- 你希望支持的模型映射
+
+这些反馈会直接进入下一版优先级。
 
 ---
 
-## 11. 目录结构
+## 9) 当前边界与透明说明
+
+当前版本不包含：
+- 私有 API key 管理
+- 内置图像引擎调用器
+- 对“未开源官方实现”做一比一复刻承诺
+
+当前定位：
+- **可用、可查、可升级的 workflow skill 层**
+
+---
+
+## 10) 仓库结构
 
 ```text
 paperbanana-agentic-illustration/
@@ -329,33 +348,27 @@ paperbanana-agentic-illustration/
 
 ---
 
-## 12. 发布仓库与推送
+## 11) 公开仓库与发布
 
-当前推荐仓库：
-- 名称：`paperbanana-agentic-illustration-skill`
-- 可见性：`private`（可后续改 public）
+默认远程仓库：
+- `paperbanana-agentic-illustration-skill`
 
-```bash
-cd paperbanana-agentic-illustration
-
-gh auth login
-gh repo create paperbanana-agentic-illustration-skill \
-  --private \
-  --source=. \
-  --remote=origin \
-  --push
-```
-
-验证：
+常用命令：
 
 ```bash
 git remote -v
 gh repo view --web
 ```
 
+如果你需要重新发布：
+
+```bash
+gh repo edit --visibility public
+```
+
 ---
 
-如果你希望，我下一步可以直接再补：
+如果你希望，我下一步可以继续补：
+- `examples/`（可复制运行的完整样例）
 - `CHANGELOG.md`（版本演进日志）
-- `CONTRIBUTING.md`（团队协作规范）
-- `examples/`（可复制粘贴的完整样例）
+- `CONTRIBUTING.md`（团队协作贡献规范）
